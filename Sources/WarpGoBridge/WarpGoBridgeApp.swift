@@ -13,11 +13,12 @@ struct WarpGoBridgeApp: App {
 
     var body: some Scene {
         Window("Warp OpenCode Bridge", id: "settings") {
-            SettingsView(model: model)
+            BridgeSettingsContent(model: model)
                 .frame(minWidth: 650, minHeight: 590)
         }
         .defaultSize(width: 700, height: 650)
         .windowResizability(.contentMinSize)
+        .commands { BridgeSettingsCommands() }
 
         MenuBarExtra {
             MenuBarView(model: model)
@@ -26,10 +27,36 @@ struct WarpGoBridgeApp: App {
                 .accessibilityLabel("Warp OpenCode Bridge: \(model.phase.title)")
         }
         .menuBarExtraStyle(.window)
+    }
+}
 
-        Settings {
-            SettingsView(model: model)
-                .frame(width: 700, height: 650)
+private struct BridgeSettingsContent: View {
+    @ObservedObject var model: AppModel
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        SettingsView(model: model)
+            .background(SettingsWindowRegistration())
+            .onAppear {
+                SettingsWindowPresenter.shared.configureOpenAction {
+                    openWindow(id: "settings")
+                }
+                SettingsWindowPresenter.shared.show()
+            }
+    }
+}
+
+private struct BridgeSettingsCommands: Commands {
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some Commands {
+        CommandGroup(replacing: .appSettings) {
+            Button("Settings…") {
+                SettingsWindowPresenter.shared.show {
+                    openWindow(id: "settings")
+                }
+            }
+            .keyboardShortcut(",", modifiers: .command)
         }
     }
 }

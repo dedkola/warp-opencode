@@ -76,7 +76,8 @@ struct MenuBarView: View {
     }
 
     private func showSettings() {
-        openWindow(id: "settings")
-        NSApplication.shared.activate(ignoringOtherApps: true)
+        SettingsWindowPresenter.shared.show {
+            openWindow(id: "settings")
+        }
     }
 }

@@ -499,6 +499,19 @@ final class BridgeAppDelegate: NSObject, NSApplicationDelegate {
     static weak var model: AppModel?
     private var terminating = false
 
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApplication.shared.setActivationPolicy(.regular)
+    }
+
+    func applicationDidBecomeActive(_ notification: Notification) {
+        SettingsWindowPresenter.shared.didBecomeActive()
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        SettingsWindowPresenter.shared.show()
+        return false
+    }
+
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard !terminating, let model = Self.model else { return .terminateNow }
         terminating = true
