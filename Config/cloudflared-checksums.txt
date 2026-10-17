@@ -1,0 +1,6 @@
+# Official GitHub release asset SHA-256 digests, retrieved 2026-10-16.
+# https://api.github.com/repos/cloudflare/cloudflared/releases/tags/2026.10.1
+# These match downloaded assets. The release body's checksum list differs;
+# use the GitHub asset digest metadata, not that body list, for this version.
+647615df99d49cd179ea5e13ef760b9bbfb33630f6ae62f87e33dfadda60adcc  cloudflared-darwin-arm64.tgz
+3b0dbaf378337e9d7fb6cd235a76d1d6a7dee434c2d8edf9281164fb6a3837ab  cloudflared-darwin-amd64.tgz

@@ -1,0 +1,45 @@
+# Swift / Xcode
+.build/
+.swiftpm/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcresult
+
+# App bundles, downloads and build products
+/build/
+/.cache/
+*.app/
+*.dmg
+*.zip
+*.tgz
+*.dSYM/
+
+# Local settings and secrets. Never commit Cloudflare or Go credentials.
+.env
+.env.*
+!.env.example
+.cloudflared/
+cloudflared/
+cert.pem
+*.pem
+*.key
+*.p12
+*.pfx
+*-credentials.json
+credentials.json
+tunnel-*.json
+secrets.json
+config.local.*
+*.token
+
+# macOS / editor / runtime artifacts
+.DS_Store
+.AppleDouble
+._*
+.vscode/
+.idea/
+*.log
+*.pid
+*.swp
+*.tmp

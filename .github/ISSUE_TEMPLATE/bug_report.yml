@@ -1,0 +1,24 @@
+name: Bug report
+description: Report a bridge setup or connection problem.
+body:
+  - type: markdown
+    attributes:
+      value: Do not include API keys, bridge tokens, Cloudflare certificates, tunnel credentials, or conversation content.
+  - type: input
+    id: version
+    attributes:
+      label: Bridge version and macOS version
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps and expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior and redacted error
+    validations:
+      required: true
