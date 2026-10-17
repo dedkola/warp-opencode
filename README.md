@@ -1,6 +1,8 @@
 # Warp OpenCode Bridge
 
-A native macOS menu bar app that connects Warp's custom inference endpoint to an **OpenCode Go subscription**. Turn the bridge on when you need it and off when you are done. The app runs a local authenticated proxy and manages a Cloudflare Tunnel to reach it.
+<img src="Config/AppIcon.png" width="96" height="96" alt="Warp OpenCode Bridge app icon" />
+
+A native macOS app with a menu bar switch that connects Warp's custom inference endpoint to an **OpenCode Go subscription**. Turn the bridge on when you need it and off when you are done. The app runs a local authenticated proxy and manages a Cloudflare Tunnel to reach it.
 
 This project is preparing its first release. Local build and automated checks can be run without accounts. A native Warp → Cloudflare → Go fresh chat, follow-up, and continuation in the same chat after turning the bridge Off and On have been confirmed working with `deepseek-v4.1-flash`. Run the connection test and a short Warp conversation after setting up your own account.
 
@@ -91,6 +93,8 @@ To verify Automatic mode after setup, start a fresh Warp chat, send a short prom
 
 ## Everyday use
 
+The app appears in the Dock and macOS app switcher (Cmd+Tab). Open Settings from the menu bar, press `Cmd+,` while the app is active, or click its Dock icon. These actions bring the same Settings window forward, including when it is minimized. Closing Settings keeps the app and bridge running; choose **Quit** to stop the app.
+
 Use the menu bar switch to start or stop this app's local proxy and tunnel process. Turning it off makes this endpoint unavailable in Warp. Select another model in Warp when you want to use a different provider; the bridge does not change Warp's model selection.
 
 Quitting the app stops its own processes. It does not stop an unrelated Cloudflare Tunnel or modify your existing `~/.cloudflared` setup. Turning it off does not remove the tunnel and DNS record from your Cloudflare account.
@@ -107,6 +111,8 @@ Quitting the app stops its own processes. It does not stop an unrelated Cloudfla
 ## Development and packaging
 
 The public app name is **Warp OpenCode Bridge** and the repository is `warp-opencode`. Internal Swift product/executable names remain `WarpGoBridge`; the bundle ID and Keychain service remain `dev.warpgobridge.app`, and the app data directory remains `WarpGoBridge`. These legacy internal names preserve existing credentials and settings when updating the app.
+
+The Dock icon uses original vector artwork. Regenerate its PNG and all-resolution macOS `.icns` with `swift scripts/generate-icons.swift`. The menu bar keeps its native template symbol so it adapts to light and dark appearances.
 
 ```sh
 # Run core tests; no subscription or Cloudflare account required.

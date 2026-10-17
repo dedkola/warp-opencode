@@ -27,6 +27,7 @@ BUNDLE="$STAGING/Warp OpenCode Bridge.app"
 mkdir -p "$BUNDLE/Contents/MacOS" "$BUNDLE/Contents/Resources/Notices"
 cp "$BIN_DIR/WarpGoBridge" "$BUNDLE/Contents/MacOS/WarpGoBridge"
 cp "$ROOT/Config/Info.plist" "$BUNDLE/Contents/Info.plist"
+cp "$ROOT/Config/AppIcon.icns" "$BUNDLE/Contents/Resources/AppIcon.icns"
 cp "$ROOT/LICENSE" "$BUNDLE/Contents/Resources/Notices/LICENSE.txt"
 cp "$ROOT/THIRD_PARTY_NOTICES.md" "$BUNDLE/Contents/Resources/Notices/THIRD_PARTY_NOTICES.md"
 
