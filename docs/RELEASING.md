@@ -1,34 +1,51 @@
-# Release preparation
+# macOS releases
 
-The app is **Warp OpenCode Bridge**; the repository is `warp-opencode`. Packaging produces `Warp OpenCode Bridge.app` and an architecture-specific `Warp-OpenCode-Bridge-<architecture>.zip`.
+Warp OpenCode Bridge is distributed through GitHub Releases as a native macOS app for macOS 14 or later. Each release contains:
 
-## Source publication
+- `Warp-OpenCode-Bridge-<version>-arm64.dmg` for Apple silicon.
+- `Warp-OpenCode-Bridge-<version>-x86_64.dmg` for Intel.
+- Matching ZIP archives and a combined `SHA256SUMS` file.
 
-- Review the exact source, documentation, configuration, and test files being included. Exclude credentials, conversation content, local Cloudflare files, caches, app bundles, and ZIPs.
-- Include the MIT license, Cloudflare helper license, third-party notices, and pinned helper checksums.
-- Keep README behavior and the changelog aligned with the build being published. Record hosted CI results separately from local checks.
-- Preserve internal `WarpGoBridge` product/executable and data-directory names, plus `dev.warpgobridge.app` bundle ID/Keychain service. Renaming those requires an explicit migration for existing installations.
+Each DMG contains the app, an Applications shortcut, and `First Launch.txt`. The app includes the pinned, checksum-verified Cloudflare helper, icon, and licenses. Users do not need developer tools or Homebrew.
 
-Publishing source does not publish a downloadable app or establish a successful hosted CI run. Repository publication is a separate authorized step.
+## Signing policy and installation
 
-## Ad-hoc preview
+The release flow needs **no Apple account, Developer ID certificate, signing secrets, or notarization**. It uses local ad-hoc signatures for app/helper integrity, required for native Apple silicon execution. The DMG is unsigned. These builds have no verified developer identity and are not notarized.
 
-`scripts/build-app.sh` creates a local ad-hoc-signed preview by default. It verifies the pinned Cloudflare archive, signs the helper and app, checks the signatures, and creates a ZIP for the selected architecture.
+Users open the DMG, drag the app to Applications, eject the image, and open the installed app. macOS can block a downloaded app on first launch. Users can approve this app with **System Settings → Privacy & Security → Open Anyway**, following [Apple's guidance](https://support.apple.com/en-us/102445).
 
-Label previews accurately. They are not Developer ID signed or notarized and may be blocked by Gatekeeper after downloading. Do not instruct users to disable Gatekeeper. Keep Apple silicon and Intel artifacts clearly distinguished; a successful build for an architecture is not a runtime test on that architecture.
+`First Launch.txt` also provides BladeVault's app-specific quarantine-removal method, scoped recursively to `/Applications/Warp OpenCode Bridge.app` so the nested helper can run. It does not change global Gatekeeper settings. Include this first-launch limitation in release notes.
 
-## Signed public binary
+## Local build and verification
 
-- Package with the maintainer's Developer ID identity using `SIGNING_IDENTITY`. The build script enables hardened runtime and timestamping for that path, but does not notarize or publish.
-- Verify the nested helper and app signatures, then complete Apple's notarization process with maintainer-managed credentials kept outside the repository.
-- Staple the accepted ticket to the app and validate Gatekeeper acceptance. Recreate the ZIP after stapling so the downloadable archive contains the final app.
-- Retain licenses and third-party notices in the app. Confirm filenames and architecture labels before preparing release assets.
+```sh
+scripts/test.sh
+scripts/build-dmg.sh --arch arm64
+scripts/verify-dmg.sh build/Warp-OpenCode-Bridge-0.1.0-arm64.dmg arm64
+```
 
-## Validation record
+Use the current bundle version in filenames. Substitute `x86_64` for an Intel build. Cross-compilation is supported, but a structural check is not a native runtime test. `verify-dmg.sh` verifies the disk image, mounts it read-only, checks the Applications shortcut and first-launch instructions, copies the app to a temporary install location, verifies bundle metadata, architectures, ad-hoc signatures, and licenses, and runs the bundled helper on a matching host. It cleans up its mount and temporary install.
 
-- Run the normal XCTest suite with full Xcode, or clearly label a Command Line Tools run as portable checks. The real-helper configuration regression must run rather than be skipped.
-- Open the packaged app and exercise first-time setup, authenticated public connection testing, On/Off, and quitting. Record the macOS version and architecture actually tested.
-- Verify a fresh Go chat, follow-up, and continuation after Off/On in Warp. Keep automatic-mode limitations visible: exact retries, shared/forked histories, compaction, and cache loss after quitting or changing routing mode.
-- Review screenshots, diagnostics, and release notes for keys, tokens, certificates, and private conversation content before sharing them.
+With only Command Line Tools, use `scripts/test.sh --portable`; this executes the existing test bodies with an assertion adapter, not XCTest. Full Xcode and CI run normal XCTest. The real-helper offline configuration regression must pass. No tests create Cloudflare tunnels or DNS records.
 
-Signing, notarization, validation, and publication are distinct outcomes; record only the ones actually completed for that release.
+Open the packaged app and verify its settings window, menu bar, Dock behavior, and quitting. Account-specific setup, public connection testing, and a real Warp conversation are separate manual checks; package verification does not establish those outcomes.
+
+## Publish a version
+
+1. Update `CFBundleShortVersionString` in `Config/Info.plist` and increment `CFBundleVersion`. Update the changelog and version examples as needed.
+2. Review and commit the source intended for release. Preserve `WarpGoBridge` executable/product/data-directory names and `dev.warpgobridge.app` bundle ID/Keychain service for existing installations.
+3. Push the reviewed commit, then create and push its matching version tag. For the initial `0.1.0` bundle:
+
+   ```sh
+   git tag v0.1.0
+   git push origin v0.1.0
+   ```
+
+4. Follow **macOS CI and release** in GitHub Actions. Both native runner jobs fetch the verified helper, run XCTest, build DMG/ZIP downloads, and verify the mounted DMG. A tag that differs from the bundle version fails before publication.
+5. The release job downloads both verified builds, checks their DMG checksums, creates combined checksums, uploads all assets to a draft release, then makes it public. Only this job has `contents: write`; it uses the built-in `GITHUB_TOKEN` with no extra repository secrets. If an upload fails, the release stays a draft and the job can be rerun. Already public releases are not overwritten; publish a new version for changes.
+
+Branch pushes, pull requests, and manual workflow runs produce downloadable CI artifacts without creating a GitHub release. A local build or a matching Git SHA does not prove hosted CI passed or that a public download exists. Record the actual outcome separately.
+
+## Optional Developer ID builds
+
+`SIGNING_IDENTITY="Developer ID Application: Your Name (TEAMID)" scripts/build-app.sh` remains available for manual app/ZIP builds. This enables hardened runtime and timestamping, but does not notarize or publish. `build-dmg.sh` deliberately uses the unsigned release policy regardless of that environment variable.

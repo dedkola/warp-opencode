@@ -4,7 +4,7 @@
 
 A native macOS app with a menu bar switch that connects Warp's custom inference endpoint to an **OpenCode Go subscription**. Turn the bridge on when you need it and off when you are done. The app runs a local authenticated proxy and manages a Cloudflare Tunnel to reach it.
 
-This project is preparing its first release. Local build and automated checks can be run without accounts. A native Warp → Cloudflare → Go fresh chat, follow-up, and continuation in the same chat after turning the bridge Off and On have been confirmed working with `deepseek-v4.1-flash`. Run the connection test and a short Warp conversation after setting up your own account.
+Local build and automated checks can be run without accounts. A native Warp → Cloudflare → Go fresh chat, follow-up, and continuation in the same chat after turning the bridge Off and On have been confirmed working with `deepseek-v4.1-flash`. Run the connection test and a short Warp conversation after setting up your own account.
 
 ## How it works
 
@@ -30,7 +30,26 @@ The bridge checks a separate access token, adds your Go key, an application user
 
 The build script bundles a checksum-verified `cloudflared` helper. No Homebrew installation is needed for that build. Cloudflare's standard account and service limits apply.
 
-## Build and open
+## Download and install
+
+Download a DMG from [GitHub Releases](https://github.com/dedkola/warp-opencode/releases): choose `arm64.dmg` for Apple silicon (M1 or newer) or `x86_64.dmg` for Intel. Releases are created when a matching version tag is pushed and both macOS builds pass CI.
+
+1. Open the DMG and drag **Warp OpenCode Bridge.app** onto **Applications**.
+2. Eject the DMG and open the app from Applications.
+3. Follow the app's setup. The Cloudflare helper is included; Xcode, Swift, and Homebrew are not required to run the app.
+
+Downloads are **not Developer ID signed or notarized** and require no Apple signing account. If macOS blocks the first launch, use **System Settings → Privacy & Security → Open Anyway** for this app. The DMG also includes **First Launch.txt** with the same app-specific Terminal method used by BladeVault:
+
+```sh
+xattr -dr com.apple.quarantine "/Applications/Warp OpenCode Bridge.app"
+open "/Applications/Warp OpenCode Bridge.app"
+```
+
+Use this only for a download you trust. It removes quarantine from this app and its bundled helper; it does not disable Gatekeeper globally. Subsequent launches work normally. See [Apple's first-launch guidance](https://support.apple.com/en-us/102445).
+
+ZIP downloads are also available. To verify a download, get `SHA256SUMS` from the same release and run `shasum -a 256 <downloaded-file>`; compare the result with its entry in that file.
+
+## Build from source
 
 ```sh
 scripts/test.sh
@@ -38,13 +57,13 @@ scripts/build-app.sh
 open "build/Warp OpenCode Bridge.app"
 ```
 
-The script produces an app and a ZIP in `build/` for your Mac's architecture. It downloads the pinned official Cloudflare helper on the first run. Generated files and credentials are excluded from Git.
+The script produces an app and a versioned ZIP in `build/` for your Mac's architecture. Use `scripts/build-dmg.sh` to also create the drag-to-Applications DMG. It downloads the pinned official Cloudflare helper on the first run. Generated files and credentials are excluded from Git.
 
 `scripts/test.sh` runs `swift test`, which requires the XCTest framework supplied with full Xcode. If you only have Command Line Tools, run `scripts/test.sh --portable` instead. This compiles and executes the same test methods with a small local assertion adapter and local mock services. It is explicitly a **portable check run, not an XCTest run**. It does not accept an Xcode license or change your selected developer directory. GitHub CI still runs the normal XCTest suite.
 
 Both modes fetch the pinned, checksum-verified `cloudflared` helper on the first run. One regression check uses the real helper to validate the generated tunnel configuration with fake credentials. That validation is offline and creates no tunnel, DNS record, or account connection. To use a specific installed helper, set `WARP_GO_CLOUDFLARED_PATH`; the test fails rather than skipping validation if no helper is available.
 
-These local builds are ad-hoc signed, **not Developer ID signed or notarized**. Downloaded copies may be blocked by Gatekeeper. Public distribution should use a Developer ID certificate and Apple's notarization process; do not ask users to disable Gatekeeper.
+The app and helper have local ad-hoc integrity signatures so Apple silicon can run them. These do not identify an Apple developer or provide notarization. The DMG itself is unsigned. Downloaded copies use the first-launch steps above.
 
 ## First-time setup
 
@@ -132,6 +151,13 @@ scripts/build-app.sh
 scripts/build-app.sh --arch arm64
 scripts/build-app.sh --arch x86_64
 
+# Create a self-contained unsigned DMG and ZIP (no Apple credentials).
+scripts/build-dmg.sh --arch arm64
+scripts/build-dmg.sh --arch x86_64
+
+# Verify a DMG, its Applications shortcut, and the copied app/helper.
+scripts/verify-dmg.sh build/Warp-OpenCode-Bridge-0.1.0-arm64.dmg arm64
+
 # Compile/package without downloading a helper (not a self-contained install).
 scripts/build-app.sh --without-cloudflared
 ```
@@ -144,9 +170,9 @@ For Developer ID signing, set `SIGNING_IDENTITY` when running the packaging scri
 SIGNING_IDENTITY="Developer ID Application: Your Name (TEAMID)" scripts/build-app.sh
 ```
 
-GitHub Actions fetches the verified helper, runs the normal Swift tests including actual helper configuration validation, and packages a locally signed macOS artifact using the same download cache. The workflow does not deploy, notarize, create a release, or use your Cloudflare or Go credentials.
+GitHub Actions runs the normal Swift tests and packages/verifies DMG and ZIP artifacts on native Apple silicon and Intel runners for pushes, pull requests, and manual runs. Pushing a `v<version>` tag matching `Config/Info.plist` additionally publishes both downloads and `SHA256SUMS` to GitHub Releases, after both builds pass. Publication uses only GitHub's built-in token; no Apple, Cloudflare, or Go credentials are required.
 
-See [release preparation](docs/RELEASING.md) for the distinction between publishing source, sharing an ad-hoc preview, and distributing a signed and notarized app. Changes for the first release are recorded in the [changelog](CHANGELOG.md).
+See [release instructions](docs/RELEASING.md) for versioning, publication, and validation. Changes for the first release are recorded in the [changelog](CHANGELOG.md).
 
 ## Troubleshooting
 

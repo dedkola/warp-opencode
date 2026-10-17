@@ -1,0 +1,23 @@
+Warp OpenCode Bridge
+
+1. Drag Warp OpenCode Bridge.app to the Applications folder in this window.
+2. Eject this disk image and open Warp OpenCode Bridge from Applications.
+
+This release does not use an Apple Developer ID certificate and is not notarized.
+macOS may block the first launch of an app downloaded from GitHub.
+
+If blocked, open System Settings > Privacy & Security, choose Open Anyway for
+Warp OpenCode Bridge, and confirm Open. This is a one-time approval for this app.
+
+Alternatively, the same first-launch method used by BladeVault is available.
+After copying the app to Applications, run these commands in Terminal:
+
+xattr -dr com.apple.quarantine "/Applications/Warp OpenCode Bridge.app"
+open "/Applications/Warp OpenCode Bridge.app"
+
+The command removes the download quarantine flag only from this app and its
+bundled helper. It does not disable Gatekeeper for other apps. Only do this for
+a download you trust from https://github.com/dedkola/warp-opencode/releases.
+
+The Cloudflare helper is included. You do not need Xcode, Swift, Homebrew, or
+a separate cloudflared installation. The app will guide you through setup.

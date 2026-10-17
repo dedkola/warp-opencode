@@ -10,4 +10,4 @@ For UI changes, open the packaged app and verify its settings window and menu ba
 
 When updating `cloudflared`, update the version in the fetch script and any runtime installer together, verify both macOS archive hashes from the official release assets, and update the notices. Do not commit downloaded binaries or app bundles.
 
-Building a signed ZIP does not publish it. Release signing, notarization, and publication are separate maintainer actions.
+Run `scripts/build-dmg.sh` and `scripts/verify-dmg.sh build/Warp-OpenCode-Bridge-0.1.0-arm64.dmg arm64` to validate the installable download (substitute the current version and architecture). CI runs native tests and DMG verification for both Apple silicon and Intel. Building locally does not publish anything; pushing a matching `v<version>` tag publishes the unsigned downloads after both builds pass. See [release instructions](docs/RELEASING.md).
