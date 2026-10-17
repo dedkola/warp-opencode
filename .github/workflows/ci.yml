@@ -1,4 +1,4 @@
-name: macOS checks
+name: macOS CI and release
 
 on:
   push:
@@ -8,27 +8,126 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: macos-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
 jobs:
   test-and-package:
-    runs-on: macos-15
+    name: Test and package (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            arch: arm64
+          - os: macos-15-intel
+            arch: x86_64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Toolchain
-        run: swift --version
+        env:
+          EXPECTED_ARCH: ${{ matrix.arch }}
+        run: |
+          swift --version
+          test "$(uname -m)" = "$EXPECTED_ARCH"
+      - name: Validate release tag against bundle version
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Config/Info.plist)"
+          if [[ "$RELEASE_TAG" != "v$version" ]]; then
+            echo "Release tag $RELEASE_TAG must match bundle version v$version." >&2
+            exit 1
+          fi
       - name: Fetch verified Cloudflare helper for offline configuration regression
         run: |
           verified_helper_path="$(scripts/fetch-cloudflared.sh)"
           printf 'WARP_GO_CLOUDFLARED_PATH=%s\n' "$verified_helper_path" >> "$GITHUB_ENV"
       - name: Test
         run: swift test
-      - name: Package macOS app with verified helper
-        run: scripts/build-app.sh
-      - name: Upload locally signed build
+      - name: Build unsigned DMG with bundled helper
+        env:
+          TARGET_ARCH: ${{ matrix.arch }}
+        run: scripts/build-dmg.sh --arch "$TARGET_ARCH"
+      - name: Verify disk image and installed app
+        env:
+          TARGET_ARCH: ${{ matrix.arch }}
+        run: |
+          version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Config/Info.plist)"
+          scripts/verify-dmg.sh "build/Warp-OpenCode-Bridge-$version-$TARGET_ARCH.dmg" "$TARGET_ARCH"
+      - name: Upload macOS downloads
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: Warp-OpenCode-Bridge-macOS
-          path: build/Warp-OpenCode-Bridge-*.zip
+          name: Warp-OpenCode-Bridge-${{ matrix.arch }}
+          path: |
+            build/Warp-OpenCode-Bridge-*.dmg
+            build/Warp-OpenCode-Bridge-*.dmg.sha256
+            build/Warp-OpenCode-Bridge-*.zip
           if-no-files-found: error
           retention-days: 7
+
+  release:
+    name: Publish GitHub downloads
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: test-and-package
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ github.ref_name }}
+    steps:
+      - name: Download both verified macOS builds
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          pattern: Warp-OpenCode-Bridge-*
+          merge-multiple: true
+          path: downloads
+      - name: Verify downloads and create combined checksums
+        working-directory: downloads
+        run: |
+          version="${RELEASE_TAG#v}"
+          for arch in arm64 x86_64; do
+            test -s "Warp-OpenCode-Bridge-$version-$arch.dmg"
+            test -s "Warp-OpenCode-Bridge-$version-$arch.zip"
+            sha256sum -c "Warp-OpenCode-Bridge-$version-$arch.dmg.sha256"
+          done
+          sha256sum ./*.dmg ./*.zip > SHA256SUMS
+      - name: Prepare install instructions
+        run: |
+          cat > "$RUNNER_TEMP/release-notes.md" <<'NOTES'
+          Native macOS app for macOS 14 or later. Cloudflare helper included; no developer tools or Homebrew needed.
+
+          - **Apple silicon (M1 or newer):** download the `arm64.dmg` asset.
+          - **Intel Mac:** download the `x86_64.dmg` asset.
+
+          Open the DMG, drag **Warp OpenCode Bridge.app** to **Applications**, eject the DMG, and open the app from Applications.
+
+          These builds have no Developer ID certificate or Apple notarization. If macOS blocks first launch, use **System Settings → Privacy & Security → Open Anyway**, or follow **First Launch.txt** inside the DMG for the same app-specific Terminal method used by BladeVault.
+
+          ZIP downloads are also available. `SHA256SUMS` contains checksums for all DMG and ZIP assets.
+          NOTES
+      - name: Publish complete release
+        working-directory: downloads
+        run: |
+          if gh release view "$RELEASE_TAG" --json isDraft > "$RUNNER_TEMP/existing-release.json"; then
+            if [[ "$(jq -r .isDraft "$RUNNER_TEMP/existing-release.json")" != true ]]; then
+              echo "Release $RELEASE_TAG is already public; refusing to replace its assets." >&2
+              exit 1
+            fi
+          else
+            gh release create "$RELEASE_TAG" --verify-tag --draft \
+              --title "Warp OpenCode Bridge $RELEASE_TAG" \
+              --notes-file "$RUNNER_TEMP/release-notes.md"
+          fi
+          gh release upload "$RELEASE_TAG" ./*.dmg ./*.zip SHA256SUMS --clobber
+          gh release edit "$RELEASE_TAG" --draft=false --latest \
+            --notes-file "$RUNNER_TEMP/release-notes.md"
